@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.12'
     - name: Install poetry and pipx
@@ -51,9 +51,9 @@ jobs:
         ]
     steps:
     - name: Check out repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -87,12 +87,12 @@ jobs:
                 curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable && apk add openssl
               fi
     - name: Upload wheel artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: wheels
         path: wheelhouse/*.whl
     - name: Upload sdist artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: sdist
         path: dist/*.tar.gz
