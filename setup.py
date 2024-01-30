@@ -11,5 +11,7 @@ ext_modules = [
     )
 ]
 setup(
-    name="recython", ext_modules=cythonize(ext_modules, compiler_directives={"language_level": "3str"}, annotate=True)
+    name="recython",
+    version="1.0.1",
+    ext_modules=cythonize(ext_modules, compiler_directives={"language_level": "3"}, annotate=True),
 )

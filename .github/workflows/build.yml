@@ -44,27 +44,48 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [
+           ubuntu-latest,
+#          windows-latest,
+#          macos-latest
+        ]
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.12'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools cython cibuildwheel
+        pip install poetry setuptools cython cibuildwheel
+    - name: Build source distribution
+      # run: python setup.py sdist
+      run: poetry build --format=sdist
     - name: Build wheel
       run: cibuildwheel --output-dir wheelhouse
       env:
+        # don't need on macos yet?
+        # CIBW_BEFORE_ALL_MACOS: "$CIBW_BEFORE_ALL_LINUX && rustup target add aarch64-apple-darwin"
+        # getting rust/openssl failures on i686
+        CIBW_SKIP: "cp27-* pp* *-manylinux_i686 *musllinux*"
+        CIBW_ENVIRONMENT: 'PATH="$PATH:$HOME/.cargo/bin"'
         # cp36-* cp37-* cp38-* cp39-* cp310-*
         CIBW_BUILD: cp311-* cp312-*
         CIBW_BEFORE_BUILD: pip install cython
-        CIBW_ARCHS_MACOS: auto universal2
-    - name: Build source distribution
-      run: python setup.py sdist
+        # Getting double builds. (wheel already exists)
+        # CIBW_ARCHS_MACOS: auto universal2
+        # CIBW_ARCHS_MACOS: x86_64 universal2 arm64
+        CIBW_BUILD_VERBOSITY: 1
+        CIBW_BEFORE_ALL_LINUX: >
+              if command -v apt-get; then
+                curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable && apt-get install -y openssl
+              elif command -v yum; then
+                curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable && yum install -y openssl-devel
+              elif command -v apk; then
+                curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable && apk add openssl
+              fi
     - name: Upload wheel artifacts
       uses: actions/upload-artifact@v2
       with:

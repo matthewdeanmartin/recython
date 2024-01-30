@@ -1,0 +1,10 @@
+recursive-include recython **/*.py
+recursive-include recython **/*.pxi
+recursive-include recython **/*.pyx
+recursive-include recython **/*.c
+recursive-include recython **/*.h
+recursive-include recython **/*.md
+# binaries
+recursive-include recython **/*.so
+
+include LICENSE
