@@ -1,0 +1,208 @@
+[tool.poetry]
+name = "recython"
+version = "1.0.0"
+description = "Have openai or the like translate python into cython. Semi-automated."
+authors = ["Matthew Martin <matthewdeanmartin@gmail.com>"]
+keywords = ["estimation", "fermi problems" ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+]
+include = [
+    "recython/**/*.py",
+    "recython/**/*.md",
+    "recython/**/*.txt",
+    "recython/**/*.html",
+    "recython/**/*.jinja",
+    "recython/py.typed",
+]
+exclude = [
+]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/matthewdeanmartin/recython"
+homepage = "https://github.com/matthewdeanmartin/recython"
+documentation = "https://github.com/matthewdeanmartin/recython"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/matthewdeanmartin/recython/issues"
+"Change Log" = "https://github.com/matthewdeanmartin/recython/blob/main/CHANGELOG.md"
+
+[tool.poetry.scripts]
+recython = 'recython.__main__:run'
+ais = 'recython.__main__:run'
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+openai = ">0.28"
+cython = ">=3.0.0"
+requests = "*"
+beautifulsoup4 ="*"
+markdownify ="*"
+
+[tool.poetry.dev-dependencies]
+# types
+mypy = ">=1.8.0"
+types-requests = "*"
+
+ruff = "*"
+
+# testing
+pytest = ">=7.4.3"
+pytest-cov = ">=4.1.0"
+
+# build tools
+black = ">=23.11.0"
+
+pre-commit = ">=3.5.0"
+
+# docs
+interrogate = ">=1.5.0"
+pydoctest = ">=0.1.22"
+pdoc3 = ">=0.10.0"
+mdformat = ">=0.7.17"
+linkcheckmd = ">=1.4.0"
+codespell = ">=2.2.6"
+pyenchant = ">=3.2.2"
+metametameta = ">=0.1.0"
+
+[tool.black]
+line-length = 120
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = [
+    "test",
+    "tests"
+]
+junit_family = "xunit1"
+norecursedirs = ["vendor", "scripts"]
+# don't know how to do this in toml
+#addopts = "--strict-markers"
+#markers =
+#	slow: marks tests as slow (deselect with '-m "not slow"')
+#	fast: marks tests as fast (deselect with '-m "not fast"')
+
+[tool.isort]
+default_section = "THIRDPARTY"
+force_grid_wrap = 0
+include_trailing_comma = true
+known_first_party = ["dedlin"]
+line_length = 120
+multi_line_output = 3
+use_parentheses = true
+
+[tool.ruff]
+line-length = 1000
+
+# Enable Pyflakes `E` and `F` codes by default.
+select = ["E", "F",
+    "D", # docs
+    "UP", # pyupgrade
+    "B", # bugbear
+]
+ignore = [
+    "E722",
+    # only track structural problems with docstrings, not whitespace, nor missing
+    "D200", "D212", "D415","D411", "D205","D102", "D103", "D100","D107","D101","D104","D105",
+    "UP007", "UP038", # Not sure if | is well supported in lowever versions of python
+]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    "dead_code",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+per-file-ignores = { }
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.10.
+target-version = "py311"
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.scriv]
+version = "literal: pyproject.toml: tool.poetry.version"
+format = "md"
+main_branches = "master, main, develop, dev"
+
+[mypy]
+warn_return_any = true
+warn_unused_configs = true
+strict = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_optional = true
+warn_redundant_casts = true
+warn_no_return = true
+
+[mypy.pygount]
+ignore_missing_imports = true
+
+[mypy.astor]
+ignore_missing_imports = true
+
+[tool.cli-tools]
+# python deps, don't really need to check, unless we make these optional and allow for pipx installation
+mypy = { version = ">=1.8.0" }
+pylint = { version = ">=3.0.2" }
+ruff = {  version = ">=0.1.9" }
+black = {  version = ">=23.11.0" }
+pygount = {  version = "*" }
+
+[tool.bug_trail]
+app_name= "recython"
+app_author= "matthewdeanmartin"
+source_folder = "recython"
+#ctags_file = "fish_tank.tags"
