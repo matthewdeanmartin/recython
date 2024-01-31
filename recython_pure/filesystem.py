@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Optional
 
-from recython.benchmark_utils import CaptureOutput as capture_output
+from recython_pure.benchmark_utils import CaptureOutput as capture_output
 
 
-def get_files_and_contents(folder_path: Path) -> list[tuple[Path, str]]:
+def get_files_and_contents(folder_path):
+    folder_path = Path(folder_path)
+
     # Ensure the folder path exists
     if not folder_path.exists():
         raise FileNotFoundError(f"The folder '{folder_path}' does not exist.")
@@ -20,7 +21,7 @@ def get_files_and_contents(folder_path: Path) -> list[tuple[Path, str]]:
     return items
 
 
-def rename_file_add_suffix(current_path: Path, suffix="_old") -> Optional[Path]:
+def rename_file_add_suffix(current_path, suffix="_old"):
     if not current_path.is_file():
         print(f"The path {current_path} does not exist or is not a file.")
         return None
@@ -44,13 +45,6 @@ def rename_file_add_suffix(current_path: Path, suffix="_old") -> Optional[Path]:
     except Exception as e:
         print(f"An error occurred while renaming the file: {e}")
         return None
-
-
-def load_template(template_name: str) -> str:
-    path_to_template = Path(__file__).parent / template_name
-    with open(str(path_to_template), encoding="utf-8") as file:
-        template = file.read()
-    return template
 
 
 def run():

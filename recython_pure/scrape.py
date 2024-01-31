@@ -1,15 +1,14 @@
 import os
-from pathlib import Path
 
 import cython
 import requests
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
-from recython.benchmark_utils import CaptureOutput as capture_output
+from recython_pure.benchmark_utils import CaptureOutput as capture_output
 
 
-def scrape_to_markdown(url: str, output_folder: Path) -> None:
+def scrape_to_markdown(url, output_folder):
     # Send an HTTP request to the URL
     response = requests.get(url, timeout=5)
     response.raise_for_status()  # Raise an exception for HTTP errors
@@ -30,10 +29,10 @@ def scrape_to_markdown(url: str, output_folder: Path) -> None:
 
         # Define the output file path
         file_name = f"{url.split('/')[-1]}.md"
-        output_path = output_folder / file_name
+        output_path = os.path.join(output_folder, file_name)
 
         # Write the content to the file
-        with open(str(output_path), "w", encoding="utf-8") as file:
+        with open(output_path, "w", encoding="utf-8") as file:
             file.write(markdown_text)
         print(f"Content written to {output_path}")
     else:
@@ -45,7 +44,7 @@ def is_compiled():
     return cython.compiled
 
 
-def download_all(output_folder: Path, first: int = -1) -> None:
+def download_all(output_folder: str, first: int = -1) -> None:
     relevant_urls = [
         "https://cython.readthedocs.io/en/stable/src/tutorial/cython_tutorial.html",
         "https://cython.readthedocs.io/en/stable/src/tutorial/cython_tutorial.html",
@@ -73,8 +72,8 @@ def download_all(output_folder: Path, first: int = -1) -> None:
 
 def run():
     with capture_output() as _captured:
-        download_all(Path("tmp"), first=2)
+        download_all("tmp", first=2)
 
 
 if __name__ == "__main__":
-    download_all(Path("docs"))
+    download_all("docs")

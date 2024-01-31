@@ -1,9 +1,8 @@
 # recython
-Use ai to assist in turning ordinary python into cython python.
+Use AI to assist in turning ordinary python into cython python.
 
-Don't expect it to work unassisted.
+Don't expect it to work unassisted. It is less ambitious than other coding assistants that try to do it all.
 
-Less ambitious than other coding assistants that try to do it all.
 
 ## Two approaches
 - Convert to .pxd and .pyx files
@@ -11,7 +10,7 @@ Less ambitious than other coding assistants that try to do it all.
 
 ## Implemented
 - looping across files
-- loads templates
+- loads prompt templates
 - skips files that should not be translated
 - Reminds bot of some cython pointers
 - Tell bot to put advice in headers.

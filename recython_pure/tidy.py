@@ -1,6 +1,6 @@
 import cython
 
-from recython.benchmark_utils import CaptureOutput as capture_output
+from recython_pure.benchmark_utils import CaptureOutput as capture_output
 
 
 def is_compiled():
@@ -8,7 +8,7 @@ def is_compiled():
     return cython.compiled
 
 
-def extract_code_block(text: str, start_marker: str = "```cython", end_marker: str = "```"):
+def extract_code_block(text, start_marker="```cython", end_marker="```"):
     if "```" not in text:
         return text
 

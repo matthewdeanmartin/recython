@@ -1,4 +1,4 @@
-from recython.tidy import extract_code_block
+from recython.tidy import extract_code_block, run
 
 
 def test_extract_code_block():
@@ -11,3 +11,7 @@ def test_extract_code_block():
     ```
     """
     assert extract_code_block(sample_text) == 'def hello_world():\n        print("Hello, World!")'
+
+
+def test_run():
+    run()

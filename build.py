@@ -10,12 +10,12 @@
 # https://github.com/EgorBlagov/trie-again/blob/0c478b0cd6eb02fb67f0127653105041c478f12f/build.py
 
 import os
+from pathlib import Path
+from shutil import copyfile as copy_file
 
 from Cython.Build import cythonize
-from setuptools import Extension, Distribution
-from shutil import copyfile as copy_file
+from setuptools import Distribution, Extension
 from setuptools.command.build_ext import build_ext
-from pathlib import Path
 
 PACKAGE = "recython"
 

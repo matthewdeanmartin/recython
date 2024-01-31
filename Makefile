@@ -17,6 +17,9 @@ clean-pyc:
 	@find recython -name '*.pyc' -exec rm -f {} + || true
 	@find recython -name '*.pyo' -exec rm -f {} + || true
 	@find recython -name '__pycache__' -exec rm -fr {} + || true
+	@find recython -name '*.c' -exec rm -fr {} + || true
+	@find recython -name '*.pyd' -exec rm -fr {} + || true
+	@find recython -name '*.html' -exec rm -fr {} + || true
 
 clean-test:
 	@echo "Removing coverage data"
@@ -131,4 +134,5 @@ check_changelog:
 check_all: check_docs check_md check_spelling check_changelog
 
 compile:
+	python -m copy_recython
 	python setup.py build_ext --inplace
