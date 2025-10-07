@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from recython.benchmark_utils import CaptureOutput as capture_output
 
@@ -20,7 +19,7 @@ def get_files_and_contents(folder_path: Path) -> list[tuple[Path, str]]:
     return items
 
 
-def rename_file_add_suffix(current_path: Path, suffix="_old") -> Optional[Path]:
+def rename_file_add_suffix(current_path: Path, suffix="_old") -> Path | None:
     if not current_path.is_file():
         print(f"The path {current_path} does not exist or is not a file.")
         return None
