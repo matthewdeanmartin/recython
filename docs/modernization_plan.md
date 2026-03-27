@@ -19,14 +19,14 @@ The product should feel dependable and explicit rather than magical. That means:
 - The repo includes examples, tests, and some early documentation assets.
 
 ### Gaps and risks
-- Packaging and build metadata were still centered on old Poetry conventions.
-- The public CLI entrypoint was only a stub.
+- Packaging and build metadata have been moved to `uv` + `hatchling`, but the runtime/config surface still needs modernization.
+- The public CLI entrypoint now has a usable scaffold, but it does not yet cover the broader command set in this plan.
 - OpenAI integration was tied to older assumptions and did not expose configuration cleanly.
-- The pure-style path was writing to the wrong output shape.
+- The known pure-style output-shape bug has been fixed, but broader output planning is still ad hoc.
 - The codebase contains duplicate or parallel packages (`recython` and `recython_pure`) that blur ownership.
-- There is no central run manifest, cache, job model, or resume strategy.
-- `pyproject.toml` does not yet describe translation policy, prompt choices, excludes, or maintenance mode behavior.
-- Test coverage exists, but it is narrow and does not cover CLI flows, config parsing, or end-to-end job orchestration.
+- Resume strategy is still missing, even though run manifests, prompt snapshots, validation results, and a basic job model now exist.
+- `pyproject.toml` can now describe translation defaults and prompt overrides, but maintenance-mode behavior is still not implemented.
+- Test coverage now includes basic CLI flows, config parsing, run planning, validation, and repair retries, but it is still narrow around end-to-end orchestration and maintenance mode.
 
 ## Target product shape
 
@@ -203,28 +203,11 @@ This is critical for resume, debugging, and maintenance mode.
 ## Delivery phases
 
 ### Phase 0: Foundation cleanup
-- Finish moving the repo to `uv` + `hatchling`.
-- Replace placeholder CLI with a stable command structure.
-- Remove or clearly quarantine dead helper scripts.
-- Normalize package metadata and dependency groups.
-- Fix obvious path and output bugs.
-
-### Phase 1: Config and orchestration
-- Add `config.py` with layered defaults and `pyproject.toml` parsing.
-- Introduce a `RunRequest` and `RunResult` model.
-- Centralize file discovery, filtering, and output planning.
-- Add dry-run planning and machine-readable reporting.
-
-### Phase 2: Prompt system
-- Move prompts into named packs.
-- Add validation for custom prompt files.
-- Support provider/model overrides and prompt-profile selection.
-- Add prompt snapshots to run artifacts.
-
-### Phase 3: Validation and repair loop
-- Add Python syntax validation and optional Cython compile checks.
-- Capture compile failures and feed them into a targeted repair prompt.
-- Add retry policy with explicit attempt counts and stop conditions.
+- [x] Finish moving the repo to `uv` + `hatchling`.
+- [x] Replace placeholder CLI with a stable command structure.
+- [ ] Remove or clearly quarantine dead helper scripts.
+- [x] Normalize package metadata and dependency groups.
+- [ ] Fix obvious path and output bugs.
 
 ### Phase 4: Maintenance mode
 - Add baseline manifest support.
@@ -265,15 +248,12 @@ This is critical for resume, debugging, and maintenance mode.
 ## Immediate backlog
 
 ### This pass
-- Move packaging to `hatchling` with `uv` dependency groups.
-- Replace the CLI stub with a usable command scaffold.
-- Fix the pure output path bug.
-- Write and check in a comprehensive modernization plan.
+- [x] Move packaging to `hatchling` with `uv` dependency groups.
+- [x] Replace the CLI stub with a usable command scaffold.
+- [x] Fix the pure output path bug.
+- [x] Write and check in a comprehensive modernization plan.
 
 ### Next pass
-- Add `[tool.recython]` parsing and `recython config init`.
-- Introduce an engine layer so the CLI stops calling strategy functions directly.
-- Add a run manifest format and dry-run report output.
 - Clean up or delete obsolete helper scripts once replacements exist.
 
 ## Success criteria

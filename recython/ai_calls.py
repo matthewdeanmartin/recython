@@ -20,7 +20,13 @@ PURE_STYLE = 1
 CLASSIC_STYLE = 2
 
 
-def completion(prompt: str, *, model: str | None = None, max_completion_tokens: int | None = None) -> str:
+def completion(
+    prompt: str,
+    *,
+    model: str | None = None,
+    max_completion_tokens: int | None = None,
+    temperature: float | None = None,
+) -> str:
     client = get_client()
     response = client.chat.completions.create(
         model=model or DEFAULT_MODEL,
@@ -31,6 +37,7 @@ def completion(prompt: str, *, model: str | None = None, max_completion_tokens: 
             },
         ],
         max_completion_tokens=max_completion_tokens,
+        temperature=temperature,
     )
     return response.choices[0].message.content or ""
 

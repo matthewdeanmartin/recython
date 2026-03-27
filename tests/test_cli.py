@@ -35,5 +35,5 @@ def test_convert_dry_run(capsys, tmp_path: Path):
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Matched 1 Python files" in captured.out
+    assert "Planned 1 file(s) for classic conversion." in captured.out
     assert "module.py" in captured.out

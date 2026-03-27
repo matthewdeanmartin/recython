@@ -1,55 +1,25 @@
-import os
 from pathlib import Path
 
-import recython.ai_calls as ai
-from recython import tidy
-from recython.filesystem import get_files_and_contents, load_template
-
-PURE_STYLE = 1
-CLASSIC_STYLE = 2
+from recython.engine import build_run_request, execute_run
 
 
 def cythonize_classic_project(folder_path: Path, target_folder: Path, never_translate: list[str]) -> list[Path]:
-    written = []
-    for file_path, file_contents in get_files_and_contents(folder_path):
-        if os.path.exists(str(file_path).replace(".py", ".pyx")):
-            continue
-        skip = False
-        for fragment in never_translate:
-            if fragment in str(file_path):
-                skip = True
-        if skip:
-            continue
-        relative_path = file_path.relative_to(folder_path)
-        result = cython_classic_style(file_contents, relative_path, target_folder)
-        written.extend(result)
-    return written
-
-
-def cython_classic_style(file_contents: str, file_path: Path, target_folder: Path) -> list[Path]:
-    wrote_files = []
-    template = load_template("cython_style_pyx.md")
-    pyx_prompt = template.replace("XXXCODEXXX", file_contents)
-    print(pyx_prompt)
-    result = ai.completion(pyx_prompt)
-    final_pyx = target_folder / file_path.parent / (file_path.stem + ".pyx")
-    os.makedirs(str(final_pyx.parent), exist_ok=True)
-    wrote_files.append(final_pyx)
-    with open(final_pyx, "w", encoding="utf-8") as file:
-        file.write(tidy.extract_code_block(result))
-
-    # read prompt
-    template = load_template("cython_style_pxd.md")
-    pyx_prompt = template.replace("XXXRESULTXXX", result)
-
-    # get and write response
-    result = ai.completion(pyx_prompt)
-    final_pxd = target_folder / file_path.parent / (file_path.stem + ".pxd")
-    wrote_files.append(final_pxd)
-    with open(str(final_pxd), "w", encoding="utf-8") as file:
-        file.write(tidy.extract_code_block(result))
-
-    return wrote_files
+    request = build_run_request(
+        source_root=folder_path,
+        output_root=target_folder,
+        style="classic",
+        provider="openai",
+        model="gpt-4o-mini",
+        temperature=0.0,
+        max_completion_tokens=4000,
+        exclude=never_translate,
+        include=[],
+        prompt_profile="default",
+        max_attempts=1,
+        write_manifest=False,
+        dry_run=False,
+    )
+    return execute_run(request).written_files
 
 
 def run():
