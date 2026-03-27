@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,25 +13,24 @@ def mock_openai_client():
         with patch("recython.ai_calls.get_client") as get_client:
             mock_client = MagicMock()
             get_client.return_value = mock_client
-            mock_chat = MagicMock()
-            mock_completions = MagicMock()
-            mock_client.return_value.chat.completions.create.return_value = mock_chat
-            mock_client.return_value.completions.create.return_value = mock_completions
-            yield mock_chat, mock_completions
+            mock_response = SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="Test completion response"))]
+            )
+            mock_client.chat.completions.create.return_value = mock_response
+            yield mock_client
 
 
 def test_completion(mock_openai_client):
-    with temporary_env_var("OPENAI_API_KEY", "FAKE"):
-        mock_chat, _ = mock_openai_client
-        mock_chat.Choices[0].message.Content = "Test completion response"
+    prompt = "Test prompt"
+    result = completion(prompt)
 
-        prompt = "Test prompt"
-        completion(prompt)
+    assert result == "Test completion response"
+    mock_openai_client.chat.completions.create.assert_called_once()
 
 
 def test_short_completion(mock_openai_client):
-    _, mock_completions = mock_openai_client
-    mock_completions.Choices[0].text.Strip.return_value = "Test short completion response"
-
     prompt = "Test prompt"
-    short_completion(prompt)
+    result = short_completion(prompt)
+
+    assert result == "Test completion response"
+    mock_openai_client.chat.completions.create.assert_called_once()

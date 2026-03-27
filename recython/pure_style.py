@@ -19,7 +19,8 @@ def pure_cythonize_project(folder_path: Path, target_folder: Path, never_transla
         if skip:
             continue
         # another skip list for DONE
-        result = cython_pure_style(file_contents, file_path, target_folder)
+        relative_path = file_path.relative_to(folder_path)
+        result = cython_pure_style(file_contents, relative_path, target_folder)
         written.extend(result)
     return written
 
@@ -29,14 +30,12 @@ def cython_pure_style(file_contents: str, file_path: Path, target_folder: Path) 
     pure_prompt = template.replace("XXXCODEXXX", file_contents)
     result = ai.completion(pure_prompt)
 
-    target_path = target_folder / file_path.name
-    final_py = target_path.parent / (target_path.name + ".pxd")
-    os.makedirs(target_folder, exist_ok=True)
+    final_py = target_folder / file_path
+    os.makedirs(final_py.parent, exist_ok=True)
     if final_py == file_path:
         raise TypeError("Cannot overwrite the original file")
-    with open(str(final_py), "w", encoding="utf-8") as file:
+    with open(final_py, "w", encoding="utf-8") as file:
         file.write(tidy.extract_code_block(result))
-    # Don't need pdx?
     return [final_py]
 
 

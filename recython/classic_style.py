@@ -20,7 +20,8 @@ def cythonize_classic_project(folder_path: Path, target_folder: Path, never_tran
                 skip = True
         if skip:
             continue
-        result = cython_classic_style(file_contents, file_path, target_folder)
+        relative_path = file_path.relative_to(folder_path)
+        result = cython_classic_style(file_contents, relative_path, target_folder)
         written.extend(result)
     return written
 

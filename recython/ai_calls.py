@@ -3,6 +3,7 @@ import os
 import openai
 
 CLIENT = None
+DEFAULT_MODEL = os.environ.get("RECYTHON_OPENAI_MODEL", "gpt-4o-mini")
 
 
 def get_client() -> openai.OpenAI:
@@ -19,33 +20,20 @@ PURE_STYLE = 1
 CLASSIC_STYLE = 2
 
 
-def completion(prompt: str) -> str:
+def completion(prompt: str, *, model: str | None = None, max_completion_tokens: int | None = None) -> str:
     client = get_client()
-    completion = client.chat.completions.create(
-        # model="gpt-4-0125-preview", # expensive, but smart. 20x more expensive
-        model="gpt-3.5-turbo-1106",
+    response = client.chat.completions.create(
+        model=model or DEFAULT_MODEL,
         messages=[
             {
                 "role": "user",
                 "content": prompt,
             },
         ],
+        max_completion_tokens=max_completion_tokens,
     )
-    return completion.choices[0].message.content or ""
+    return response.choices[0].message.content or ""
 
 
 def short_completion(prompt: str) -> str:
-    client = get_client()
-    # Prompt for the completion
-
-    # Make a request to the Completions API
-    response = client.completions.create(
-        model="gpt-3.5-turbo-instruct",  # completions, no sunset, small window
-        prompt=prompt,
-        max_tokens=1500,  # Maximum number of tokens in the response
-        temperature=0,  # Controls the randomness of the response (higher values make it more random)
-    )
-
-    # Get and print the generated completion
-    text = response.choices[0].text.strip()
-    return text
+    return completion(prompt, max_completion_tokens=1500)
