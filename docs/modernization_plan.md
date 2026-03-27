@@ -11,22 +11,20 @@ The product should feel dependable and explicit rather than magical. That means:
 - Repeatable outputs and resumable runs.
 - Later UI layers that wrap the same engine instead of inventing their own logic.
 
-## Current state assessment
+## Current state
 
-### Strengths worth preserving
+### Strengths
 - There is already a usable split between classic Cython output and pure-Python Cython output.
 - Prompt templates are stored as editable files rather than being buried in code.
 - The repo includes examples, tests, and some early documentation assets.
 
-### Gaps and risks
-- Packaging and build metadata have been moved to `uv` + `hatchling`, but the runtime/config surface still needs modernization.
-- The public CLI entrypoint now has a usable scaffold, but it does not yet cover the broader command set in this plan.
-- OpenAI integration was tied to older assumptions and did not expose configuration cleanly.
-- The known pure-style output-shape bug has been fixed, but broader output planning is still ad hoc.
-- The codebase contains duplicate or parallel packages (`recython` and `recython_pure`) that blur ownership.
-- Resume strategy is still missing, even though run manifests, prompt snapshots, validation results, and a basic job model now exist.
-- `pyproject.toml` can now describe translation defaults and prompt overrides, but maintenance-mode behavior is still not implemented.
-- Test coverage now includes basic CLI flows, config parsing, run planning, validation, and repair retries, but it is still narrow around end-to-end orchestration and maintenance mode.
+### Remaining gaps
+- The codebase still carries duplicate or parallel packages (`recython` and `recython_pure`) that blur ownership.
+- Resume support is still missing, even though runs now persist manifests, source snapshots, prompt snapshots, response snapshots, validation results, and maintenance metadata.
+- Maintenance mode exists, but it is still manifest-based rather than git-ref or timestamp aware.
+- Validation currently focuses on syntax and Cython parser checks; richer compile, lint, and type-check feedback is still missing.
+- The CLI covers the core workflows, but `resume` and a richer reporting surface are still open.
+- Test coverage now includes config parsing, planning, validation, repair retries, and maintenance baselines, but end-to-end fixture coverage is still modest.
 
 ## Target product shape
 
@@ -118,9 +116,9 @@ Design rules:
 - Prompt paths should allow local overrides without editing package files.
 
 ### Prompt tuning
-Prompt tuning should be treated as product surface area, not a hidden hack.
+Prompt tuning is product surface area, not a hidden hack.
 
-Needed capabilities:
+Current direction:
 
 - Named prompt profiles such as `safe`, `performance`, `minimal-diff`, and `maintenance`.
 - Layered prompts: system guidance, style-specific prompt, file-context prompt, validation prompt.
@@ -129,18 +127,16 @@ Needed capabilities:
 - A way to capture compile failures and feed them back into a repair prompt.
 
 ### Maintenance cythonization
-This is one of the most important scenarios and deserves first-class support.
+Maintenance mode now has a first usable shape:
 
-Recommended flow:
-
-1. Detect changed Python files since a git ref, manifest, or timestamp.
-2. Load prior generated artifacts if they exist.
-3. Provide both old Python and current Python context to the model.
+1. Compare current Python source hashes to a baseline manifest.
+2. Skip unchanged files.
+3. Provide old source, current source, and previous generated output to the model.
 4. Ask for the smallest safe update to generated output.
-5. Validate the result.
-6. Save a report showing generated diff, validation issues, and files needing manual review.
+5. Validate the result and retry with targeted repair context when needed.
+6. Save a report showing changed files, unchanged files, regenerated outputs, and manual-review candidates.
 
-This mode should prefer stability over maximal optimization.
+The next step is broadening change detection beyond manifest-to-manifest comparison.
 
 ## Architecture direction
 
@@ -175,9 +171,7 @@ Guiding principle:
 - UI layers call the engine, never the provider directly.
 
 ### Provider abstraction
-Even if OpenAI is the first-class provider, define a narrow provider interface now.
-
-That interface should cover:
+OpenAI is still the first-class provider, but the orchestration layer should keep moving toward a narrow provider interface that covers:
 
 - Text generation.
 - Structured result metadata.
@@ -187,18 +181,9 @@ That interface should cover:
 That keeps the harness usable with Codex, Claude, or local models later without rewriting orchestration.
 
 ### Run artifacts
-Each run should write a machine-readable manifest under a hidden working folder such as `.recython/runs/<timestamp>/`.
+Runs now write machine-readable manifests under `.recython/runs/<timestamp>/` with prompt snapshots, response snapshots, validation data, source snapshots, and `report.md`.
 
-Recommended artifacts:
-
-- `manifest.json`
-- `prompts/`
-- `responses/`
-- `outputs/`
-- `validation.json`
-- `report.md`
-
-This is critical for resume, debugging, and maintenance mode.
+The main missing artifact work is resume-specific state and a cleaner operator-facing report surface.
 
 ## Delivery phases
 
@@ -209,16 +194,16 @@ This is critical for resume, debugging, and maintenance mode.
 - [x] Normalize package metadata and dependency groups.
 - [ ] Fix obvious path and output bugs.
 
-### Phase 4: Maintenance mode
-- Add baseline manifest support.
-- Detect changed upstream files.
-- Generate minimal-diff updates for affected outputs.
-- Add reporting geared toward reviewing regenerated code.
-
 ### Phase 5: UI shells
 - Build a TUI over the existing engine for local operator workflows.
 - Build a Tkinter GUI for broader accessibility.
 - Keep both as thin frontends over the same job APIs and config model.
+
+### Cross-cutting cleanup
+- Remove or clearly quarantine dead helper scripts.
+- Consolidate duplicate package ownership between `recython` and `recython_pure`.
+- Add resume support over existing run artifacts.
+- Improve reporting and validation depth without bloating the CLI.
 
 ## Testing strategy
 
@@ -247,14 +232,10 @@ This is critical for resume, debugging, and maintenance mode.
 
 ## Immediate backlog
 
-### This pass
-- [x] Move packaging to `hatchling` with `uv` dependency groups.
-- [x] Replace the CLI stub with a usable command scaffold.
-- [x] Fix the pure output path bug.
-- [x] Write and check in a comprehensive modernization plan.
-
-### Next pass
 - Clean up or delete obsolete helper scripts once replacements exist.
+- Add resume support on top of saved manifests and artifacts.
+- Expand maintenance-mode detection beyond baseline-manifest comparison.
+- Add richer validation and reporting for review-heavy workflows.
 
 ## Success criteria
 The project is on the right path when:

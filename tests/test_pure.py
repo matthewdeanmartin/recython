@@ -13,7 +13,7 @@ def test_pure_cythonize_project(tmp_path):
                 get_client.return_value = mock_client
                 completion.return_value = "Test completion response"
 
-                folder_path = Path("examples/src_hangman/hangman")
+                folder_path = Path("examples/src_multiple_regression/multiple_regression")
                 assert folder_path.exists()
                 target_folder = tmp_path
                 never_translate = [

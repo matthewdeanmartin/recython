@@ -1,0 +1,1 @@
+"""Fuzzy arithmetic example workload."""

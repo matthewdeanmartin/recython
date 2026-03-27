@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from recython.config import load_config
+from recython.prompts import load_prompt_pack
 
 
 def test_load_config_from_pyproject(tmp_path: Path):
@@ -41,3 +42,12 @@ pure = "prompts/pure.md"
     assert config.write_manifest is False
     assert config.validation.ruff is False
     assert config.prompt_paths["pure"] == "prompts/pure.md"
+
+
+def test_prompt_profile_changes_loaded_prompt_text(tmp_path: Path):
+    config = load_config(start_path=tmp_path)
+    default_pack = load_prompt_pack(config)
+    safe_pack = load_prompt_pack(config.__class__(project_root=config.project_root, prompt_profile="safe"))
+
+    assert default_pack.templates["pure"].text != safe_pack.templates["pure"].text
+    assert "Prefer correctness and readability" in safe_pack.templates["pure"].text

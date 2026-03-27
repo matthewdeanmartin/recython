@@ -6,7 +6,7 @@ from pathlib import Path
 
 from recython.config import apply_config_overrides, load_config, render_starter_config
 from recython.engine import build_run_request, execute_run_with_pack, plan_run
-from recython.jobs import RunResult
+from recython.jobs import RunResult, ValidationRequest
 from recython.prompts import PROMPT_KEYS, list_prompt_profiles, load_prompt_pack
 from recython.validation import validate_outputs
 
@@ -40,20 +40,60 @@ def build_parser() -> argparse.ArgumentParser:
     )
     convert.add_argument("--include", action="append", default=[], metavar="TEXT", help="Limit work to matching files.")
     convert.add_argument("--model", help="Override the configured model for this run.")
+    convert.add_argument("--provider", choices=("openai", "openrouter"), help="Override the configured provider.")
     convert.add_argument("--prompt-profile", help="Select a bundled prompt profile.")
     convert.add_argument("--max-attempts", type=int, help="Maximum generation attempts per source file.")
+    convert.add_argument(
+        "--baseline-manifest",
+        type=Path,
+        help="Optional baseline manifest for maintenance-aware runs.",
+    )
     convert.add_argument("--pyproject", type=Path, help="Load configuration from a specific pyproject.toml.")
     convert.add_argument("--report-json", type=Path, help="Write the run result as JSON to this path.")
     convert.set_defaults(handler=handle_convert)
+
+    maintain = subparsers.add_parser("maintain", help="Regenerate only files changed since a baseline manifest.")
+    maintain.add_argument("source", nargs="?", type=Path, help="Source package or module directory to translate.")
+    maintain.add_argument("output", nargs="?", type=Path, help="Destination folder for translated files.")
+    maintain.add_argument("--style", choices=("classic", "pure"), help="Translation strategy to use.")
+    maintain.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="Substring filter to skip files.",
+    )
+    maintain.add_argument(
+        "--include",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="Limit work to matching files.",
+    )
+    maintain.add_argument("--model", help="Override the configured model for this run.")
+    maintain.add_argument("--provider", choices=("openai", "openrouter"), help="Override the configured provider.")
+    maintain.add_argument("--prompt-profile", help="Select a bundled prompt profile.")
+    maintain.add_argument("--max-attempts", type=int, help="Maximum generation attempts per source file.")
+    maintain.add_argument("--baseline-manifest", type=Path, help="Baseline manifest to diff against.")
+    maintain.add_argument("--dry-run", action="store_true", help="Preview changed files without calling the model.")
+    maintain.add_argument("--pyproject", type=Path, help="Load configuration from a specific pyproject.toml.")
+    maintain.add_argument("--report-json", type=Path, help="Write the run result as JSON to this path.")
+    maintain.set_defaults(handler=handle_maintain)
 
     plan = subparsers.add_parser("plan", help="Preview the files and outputs that would be touched.")
     plan.add_argument("source", nargs="?", type=Path, help="Source package or module directory to translate.")
     plan.add_argument("output", nargs="?", type=Path, help="Destination folder for translated files.")
     plan.add_argument("--style", choices=("classic", "pure"), help="Translation strategy to use.")
+    plan.add_argument("--provider", choices=("openai", "openrouter"), help="Override the configured provider.")
     plan.add_argument("--exclude", action="append", default=[], metavar="TEXT", help="Substring filter to skip files.")
     plan.add_argument("--include", action="append", default=[], metavar="TEXT", help="Limit work to matching files.")
     plan.add_argument("--prompt-profile", help="Select a bundled prompt profile.")
     plan.add_argument("--max-attempts", type=int, help="Maximum generation attempts per source file.")
+    plan.add_argument(
+        "--baseline-manifest",
+        type=Path,
+        help="Optional baseline manifest for maintenance-aware planning.",
+    )
     plan.add_argument("--pyproject", type=Path, help="Load configuration from a specific pyproject.toml.")
     plan.add_argument("--report-json", type=Path, help="Write the run result as JSON to this path.")
     plan.set_defaults(handler=handle_plan)
@@ -101,9 +141,12 @@ def _resolve_effective_request(args: argparse.Namespace):
     config = apply_config_overrides(
         config,
         style=getattr(args, "style", None),
+        provider=getattr(args, "provider", None),
         model=getattr(args, "model", None),
         prompt_profile=getattr(args, "prompt_profile", None),
         max_attempts=getattr(args, "max_attempts", None),
+        maintenance_mode=getattr(args, "maintenance_mode", None),
+        baseline_manifest=getattr(args, "baseline_manifest", None),
     )
     source = args.source or (config.source[0] if config.source else None)
     output = args.output or config.output_root
@@ -127,8 +170,16 @@ def _resolve_effective_request(args: argparse.Namespace):
         include=merged_include,
         prompt_profile=config.prompt_profile,
         max_attempts=config.max_attempts,
+        maintenance_mode=config.maintenance_mode,
+        baseline_manifest=config.baseline_manifest,
         write_manifest=config.write_manifest,
         dry_run=getattr(args, "dry_run", False),
+        validation=ValidationRequest(
+            python_compile=config.validation.python_compile,
+            cython_compile=config.validation.cython_compile,
+            ruff=config.validation.ruff,
+            mypy=config.validation.mypy,
+        ),
     )
     return config, request
 
@@ -163,6 +214,26 @@ def handle_convert(args: argparse.Namespace) -> int:
         return 0
 
     print(f"Wrote {len(result.written_files)} file(s) to {request.output_root}")
+    for path in result.written_files:
+        print(path)
+    if result.manifest_path is not None:
+        print(f"Manifest: {result.manifest_path}")
+    return 0
+
+
+def handle_maintain(args: argparse.Namespace) -> int:
+    args.maintenance_mode = True
+    config, request = _resolve_effective_request(args)
+    prompt_pack = load_prompt_pack(config)
+    result = execute_run_with_pack(request, prompt_pack)
+    _write_report_json(args.report_json, result)
+
+    if args.dry_run:
+        _print_plan(result)
+        return 0
+
+    changed_count = len(result.maintenance_summary.get("changed_files", []))
+    print(f"Regenerated {len(result.written_files)} file(s) from {changed_count} changed source file(s).")
     for path in result.written_files:
         print(path)
     if result.manifest_path is not None:

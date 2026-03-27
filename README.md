@@ -9,14 +9,14 @@ The project is still in active reconstruction. The current focus is a reliable s
 Generate paired `.pyx` and `.pxd` files from Python source.
 
 ```powershell
-uv run recython convert .\examples\src_hangman\hangman .\tmp\classic --style classic --exclude __init__
+uv run recython convert .\examples\src_multiple_regression\multiple_regression .\tmp\classic --style classic --exclude __init__
 ```
 
 ### Pure style
 Generate Python files intended for Cython's pure-Python mode.
 
 ```powershell
-uv run recython convert .\examples\src_hangman\hangman .\tmp\pure --style pure --exclude __init__
+uv run recython convert .\examples\src_multiple_regression\multiple_regression .\tmp\pure --style pure --exclude __init__
 ```
 
 ### Prompt inspection

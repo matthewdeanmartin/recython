@@ -5,6 +5,14 @@ from pathlib import Path
 from typing import Any
 
 
+@dataclass(slots=True)
+class ValidationRequest:
+    python_compile: bool = True
+    cython_compile: bool = False
+    ruff: bool = True
+    mypy: bool = False
+
+
 def _json_ready(value: Any) -> Any:
     if isinstance(value, Path):
         return str(value)
@@ -48,8 +56,11 @@ class RunRequest:
     include: list[str] = field(default_factory=list)
     prompt_profile: str = "default"
     max_attempts: int = 1
+    maintenance_mode: bool = False
+    baseline_manifest: Path | None = None
     write_manifest: bool = True
     dry_run: bool = False
+    validation: ValidationRequest = field(default_factory=ValidationRequest)
 
     def to_dict(self) -> dict[str, Any]:
         return _json_ready(asdict(self))
@@ -64,6 +75,10 @@ class RunResult:
     written_files: list[Path] = field(default_factory=list)
     prompts_used: list[str] = field(default_factory=list)
     validation_results: dict[str, Any] = field(default_factory=dict)
+    source_snapshot: dict[str, str] = field(default_factory=dict)
+    source_contents: dict[str, str] = field(default_factory=dict)
+    generated_outputs: dict[str, dict[str, str]] = field(default_factory=dict)
+    maintenance_summary: dict[str, Any] = field(default_factory=dict)
     artifacts_dir: Path | None = None
     manifest_path: Path | None = None
     report_path: Path | None = None

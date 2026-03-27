@@ -28,6 +28,7 @@ class RecythonConfig:
     prompt_profile: str = "default"
     max_attempts: int = 1
     maintenance_mode: bool = False
+    baseline_manifest: Path | None = None
     backup_originals: bool = False
     write_manifest: bool = True
     validation: ValidationConfig = field(default_factory=ValidationConfig)
@@ -79,6 +80,11 @@ def load_config(pyproject_path: Path | None = None, *, start_path: Path | None =
         prompt_profile=raw_config.get("prompt_profile", defaults.prompt_profile),
         max_attempts=int(raw_config.get("max_attempts", defaults.max_attempts)),
         maintenance_mode=bool(raw_config.get("maintenance_mode", defaults.maintenance_mode)),
+        baseline_manifest=(
+            _resolve_path(project_root, raw_config["baseline_manifest"])
+            if "baseline_manifest" in raw_config
+            else defaults.baseline_manifest
+        ),
         backup_originals=bool(raw_config.get("backup_originals", defaults.backup_originals)),
         write_manifest=bool(raw_config.get("write_manifest", defaults.write_manifest)),
         validation=ValidationConfig(
