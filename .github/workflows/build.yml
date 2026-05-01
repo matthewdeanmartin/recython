@@ -6,6 +6,9 @@ name: Publish
 #      - published
 on: [ push ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
