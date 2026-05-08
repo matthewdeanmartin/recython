@@ -2,10 +2,12 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from recython.cli import main
 from recython.config import RecythonConfig
-from recython.engine import build_run_request, execute_run_with_pack, plan_run
-from recython.jobs import ValidationRequest
+from recython.engine import _check_expected_outputs, build_run_request, execute_run_with_pack, plan_run, validate_source_module
+from recython.jobs import PlannedOutput, ValidationRequest
 from recython.prompts import load_prompt_pack
 
 
@@ -372,3 +374,109 @@ def test_execute_run_records_generation_errors_and_continues(tmp_path: Path):
     assert result.validation_results["ok"] is False
     assert any(item["validator"] == "generation" for item in result.validation_results["files"])
     assert (tmp_path / "out" / "beta.py").read_text(encoding="utf-8") == "print('beta converted')"
+
+
+# ---------------------------------------------------------------------------
+# validate_source_module
+# ---------------------------------------------------------------------------
+
+
+def test_validate_source_module_accepts_single_package(tmp_path: Path):
+    pkg = tmp_path / "mypkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "module.py").write_text("x = 1", encoding="utf-8")
+    validate_source_module(pkg)  # should not raise
+
+
+def test_validate_source_module_rejects_missing_directory(tmp_path: Path):
+    with pytest.raises(FileNotFoundError):
+        validate_source_module(tmp_path / "does_not_exist")
+
+
+def test_validate_source_module_rejects_file_path(tmp_path: Path):
+    f = tmp_path / "module.py"
+    f.write_text("x = 1", encoding="utf-8")
+    with pytest.raises(ValueError, match="file, not a directory"):
+        validate_source_module(f)
+
+
+def test_validate_source_module_rejects_empty_directory(tmp_path: Path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with pytest.raises(ValueError, match="No .py files"):
+        validate_source_module(empty)
+
+
+def test_validate_source_module_rejects_multiple_top_level_packages(tmp_path: Path):
+    for name in ("pkg_a", "pkg_b"):
+        d = tmp_path / name
+        d.mkdir()
+        (d / "__init__.py").write_text("", encoding="utf-8")
+        (d / "mod.py").write_text("x = 1", encoding="utf-8")
+    with pytest.raises(ValueError, match="multiple sub-packages"):
+        validate_source_module(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# _check_expected_outputs
+# ---------------------------------------------------------------------------
+
+
+def test_check_expected_outputs_passes_when_all_files_present(tmp_path: Path):
+    f = tmp_path / "out.pyx"
+    f.write_text("cdef int x = 1", encoding="utf-8")
+    problems = _check_expected_outputs([PlannedOutput(kind="classic_pyx", path=f)])
+    assert problems == []
+
+
+def test_check_expected_outputs_detects_missing_file(tmp_path: Path):
+    missing = tmp_path / "missing.pyx"
+    problems = _check_expected_outputs([PlannedOutput(kind="classic_pyx", path=missing)])
+    assert len(problems) == 1
+    assert "not created" in problems[0]
+
+
+def test_check_expected_outputs_detects_empty_file(tmp_path: Path):
+    f = tmp_path / "empty.pyx"
+    f.write_text("", encoding="utf-8")
+    problems = _check_expected_outputs([PlannedOutput(kind="classic_pyx", path=f)])
+    assert len(problems) == 1
+    assert "empty" in problems[0]
+
+
+def test_execute_run_retries_when_output_file_missing(tmp_path: Path):
+    """If the LLM returns no code block on attempt 1, attempt 2 should fire."""
+    source = tmp_path / "pkg"
+    source.mkdir()
+    (source / "module.py").write_text("x = 1", encoding="utf-8")
+
+    request = build_run_request(
+        source_root=source,
+        output_root=tmp_path / "out",
+        style="pure",
+        provider="openai",
+        model="gpt-4o-mini",
+        temperature=0.0,
+        max_completion_tokens=4000,
+        exclude=[],
+        include=[],
+        prompt_profile="default",
+        max_attempts=2,
+        maintenance_mode=False,
+        baseline_manifest=None,
+        write_manifest=False,
+        dry_run=False,
+        validation=ValidationRequest(python_compile=False, cython_compile=False),
+    )
+    pack = load_prompt_pack(RecythonConfig(project_root=tmp_path))
+
+    responses = [
+        "I apologize, I cannot generate code for this.",  # no fence → empty after extract
+        "```python\nx = 1\n```",
+    ]
+    with patch("recython.ai_calls.completion", side_effect=responses) as mock_completion:
+        result = execute_run_with_pack(request, pack)
+
+    assert mock_completion.call_count == 2
+    assert (tmp_path / "out" / "module.py").read_text(encoding="utf-8") == "x = 1"

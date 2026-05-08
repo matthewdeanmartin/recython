@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "recython"
-dynamic = ["version"]
+version = "0.1.0"
 description = "Use LLMs to assist in turning ordinary Python into Cython-oriented source layouts."
 readme = "README.md"
 license = "MIT"
@@ -20,6 +20,8 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "beautifulsoup4",

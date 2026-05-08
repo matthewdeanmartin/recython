@@ -9,7 +9,7 @@ import recython.ai_calls as ai
 from recython.config import RecythonConfig
 from recython.jobs import PlannedFile, PlannedOutput, RunRequest, RunResult, SkippedFile, ValidationRequest
 from recython.prompts import PromptPack, load_prompt_pack, render_prompt
-from recython.tidy import extract_code_block
+from recython.tidy import extract_code_block, has_code_fence
 from recython.validation import validate_outputs
 
 
@@ -52,6 +52,50 @@ def build_run_request(
     )
 
 
+def validate_source_module(source_root: Path) -> None:
+    """Enforce that source_root is a single Python module/package folder.
+
+    Raises ``ValueError`` with a human-readable message if the input does not
+    look like one self-contained package.  The check is intentionally
+    opinionated so the LLM prompt has a bounded, predictable input shape.
+    """
+    if not source_root.exists():
+        raise FileNotFoundError(f"Source folder '{source_root}' does not exist.")
+    if not source_root.is_dir():
+        raise ValueError(
+            f"'{source_root}' is a file, not a directory. "
+            "recython targets a module folder (one package with .py files inside)."
+        )
+
+    py_files = sorted(source_root.rglob("*.py"))
+    if not py_files:
+        raise ValueError(
+            f"No .py files found under '{source_root}'. "
+            "Point recython at a package directory that contains Python source files."
+        )
+
+    # Warn loudly if someone accidentally points at a multi-package tree
+    # (i.e. more than one __init__.py at different levels).
+    init_files = [p for p in py_files if p.name == "__init__.py"]
+    # Allow zero (namespace package) or one __init__.py per directory level; reject
+    # top-level dirs with their own __init__.py that aren't sub-packages of source_root.
+    top_level_subdirs_with_init = {
+        p.parent
+        for p in init_files
+        if p.parent != source_root and p.parent.parent == source_root
+    }
+    # A sub-package one level deep is fine; deeper nesting is fine too.
+    # What's NOT fine: sibling top-level packages sitting next to each other.
+    # Detect that by checking for multiple direct children that each have an __init__.py.
+    if len(top_level_subdirs_with_init) > 1:
+        names = ", ".join(str(d.name) for d in sorted(top_level_subdirs_with_init))
+        raise ValueError(
+            f"'{source_root}' contains multiple sub-packages at the top level ({names}). "
+            "recython is designed to process one module at a time. "
+            "Run it once per package."
+        )
+
+
 def _discover_python_files(source_root: Path) -> list[Path]:
     if not source_root.exists():
         raise FileNotFoundError(f"The folder '{source_root}' does not exist.")
@@ -90,7 +134,23 @@ def _planned_outputs(style: str, output_root: Path, relative_path: Path) -> tupl
     raise ValueError(f"Unsupported style '{style}'.")
 
 
+def _check_expected_outputs(planned_outputs: list[PlannedOutput]) -> list[str]:
+    """Return a list of problem descriptions for any output that is missing or empty."""
+    problems: list[str] = []
+    for output in planned_outputs:
+        if not output.path.exists():
+            problems.append(f"Expected output file was not created: {output.path}")
+        elif output.path.stat().st_size == 0:
+            problems.append(f"Generated file is empty: {output.path}")
+        else:
+            content = output.path.read_text(encoding="utf-8").strip()
+            if not content:
+                problems.append(f"Generated file contains only whitespace: {output.path}")
+    return problems
+
+
 def plan_run(request: RunRequest) -> RunResult:
+    validate_source_module(request.source_root)
     result = RunResult(request=request)
     baseline_manifest = _load_baseline_manifest(request.baseline_manifest) if request.maintenance_mode else None
     baseline_snapshot = baseline_manifest.get("source_snapshot", {}) if baseline_manifest else {}
@@ -282,6 +342,10 @@ def execute_run_with_pack(request: RunRequest, prompt_pack: PromptPack) -> RunRe
         _write_run_artifacts(result)
         return result
 
+    # When retries are enabled, also run the Cython compiler so errors feed
+    # back into the repair prompt on the next attempt.
+    effective_cython_compile = request.validation.cython_compile or (request.max_attempts > 1)
+
     validation_summary = {
         "ok": True,
         "checked": 0,
@@ -296,7 +360,7 @@ def execute_run_with_pack(request: RunRequest, prompt_pack: PromptPack) -> RunRe
         snapshot_prefix = _snapshot_stem(planned.relative_path)
         attempts: list[dict[str, object]] = []
         final_outputs: list[Path] = []
-        file_validation = {"ok": True, "checked": 0, "failed": 0, "files": []}
+        file_validation: dict[str, object] = {"ok": True, "checked": 0, "failed": 0, "files": []}
         pyx_contents = ""
         pure_contents = ""
         relative_key = str(planned.relative_path).replace("\\", "/")
@@ -435,11 +499,51 @@ def execute_run_with_pack(request: RunRequest, prompt_pack: PromptPack) -> RunRe
                             pure_response,
                         )
 
+                # Check that every expected file was written and is non-empty
+                # before running the more expensive validation steps.  Also
+                # treat a response with no code fence as a generation failure
+                # so the retry loop fires even if the fallback wrote prose.
+                fence_problems: list[str] = []
+                if request.style == "classic":
+                    if not has_code_fence(pyx_response):
+                        fence_problems.append(
+                            f"{planned.outputs[0].path}: LLM response contained no code fence for .pyx"
+                        )
+                else:
+                    if not has_code_fence(pure_response):
+                        fence_problems.append(
+                            f"{planned.outputs[0].path}: LLM response contained no code fence for pure output"
+                        )
+                missing_problems = fence_problems or _check_expected_outputs(planned.outputs)
+                if missing_problems:
+                    file_validation = {
+                        "ok": False,
+                        "checked": len(planned.outputs),
+                        "failed": len(missing_problems),
+                        "files": [
+                            {
+                                "path": str(planned.outputs[i].path),
+                                "validator": "expected_outputs",
+                                "ok": False,
+                                "error": missing_problems[i] if i < len(missing_problems) else None,
+                            }
+                            for i in range(len(planned.outputs))
+                        ],
+                    }
+                    attempts.append(
+                        {
+                            "attempt": attempt_index,
+                            "ok": False,
+                            "failed": len(missing_problems),
+                        }
+                    )
+                    continue
+
                 file_validation = validate_outputs(
                     final_outputs,
                     style=request.style,
                     python_compile_enabled=request.validation.python_compile,
-                    cython_compile_enabled=request.validation.cython_compile,
+                    cython_compile_enabled=effective_cython_compile,
                 )
                 attempts.append(
                     {
