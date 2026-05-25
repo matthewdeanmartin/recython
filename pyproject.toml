@@ -65,8 +65,9 @@ dev = [
 
 [tool.uv]
 default-groups = ["dev"]
-universal = true
 
+[tool.uv.pip]
+universal = true
 [tool.hatch.version]
 path = "recython/__about__.py"
 
