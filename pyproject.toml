@@ -61,6 +61,7 @@ dev = [
   "ruff",
   "types-beautifulsoup4",
   "types-requests",
+  "keepachangelog-manager-fork>=6.1.1,<7",
 ]
 
 [tool.uv]
@@ -223,3 +224,21 @@ pygount = { version = "*" }
 app_name = "recython"
 app_author = "matthewdeanmartin"
 source_folder = "recython"
+
+# changelogmanager (keepachangelog-manager-fork) drives the release workflows.
+# See .github/workflows/create_draft_release.yml and release.yml.
+[tool.changelogmanager.versioning]
+scheme = "semver"
+
+[tool.changelogmanager.validation]
+enforce_preamble = true
+format = "auto"
+
+[tool.changelogmanager.defaults]
+error_format = "github"
+commit_schema = "keepachangelog"
+schema_version = "current"
+
+[[tool.changelogmanager.components]]
+name = "default"
+changelog = "CHANGELOG.md"
